@@ -2,7 +2,7 @@
 Projekt aus dem Modul Fortgeschrittene Datenbanktechnologien
 
 # Datenbank
- - MongoDb
+ - MongoDB
  
  
 # Backend 
