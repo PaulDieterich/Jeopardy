@@ -1,4 +1,4 @@
-package de.hsos.fdgb.pdieteri.dao;
+package de.hsos.fdgb.pdieteri.jeopardy;
 
 public class Question {
 
