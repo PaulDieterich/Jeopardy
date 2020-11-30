@@ -1,11 +1,20 @@
 package de.hsos.fdgb.pdieteri.dao;
 
 import com.mongodb.*;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Aggregates;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Projections;
 import de.hsos.fdgb.pdieteri.jeopardy.Question;
-import de.hsos.fdgb.pdieteri.jeopardy.Spieler;
+import org.bson.Document;
 
 import java.awt.*;
 import java.io.IOException;
+import java.util.Arrays;
+
+import static com.mongodb.client.model.Aggregates.project;
+import static com.mongodb.client.model.Aggregates.sample;
 
 public class MongoDao extends IOException {
 
@@ -20,8 +29,8 @@ public class MongoDao extends IOException {
     private String coll;
 
     protected MongoClient mongo;
-    protected DB datenbank;
-    protected DBCollection collecion;
+    protected MongoDatabase datenbank;
+    protected MongoCollection<Document> collecion;
 
     public MongoDao(String host, int port, String DB, String coll){
         this.host = host;
@@ -38,7 +47,7 @@ public class MongoDao extends IOException {
     public boolean connect() {
         try {
             mongo = new MongoClient(host, port);
-            datenbank = mongo.getDB(db);
+            datenbank = mongo.getDatabase(db);
             collecion = datenbank.getCollection(coll);
             return true;
         } catch (Exception e) {
@@ -47,17 +56,66 @@ public class MongoDao extends IOException {
         }
         return false;
     }
+    public String[] getCategorys() {
+        String[] categoryen = new String[5];
+        int g = 0;
+
+        for (Document s : collecion.aggregate(
+                Arrays.asList(
+                        sample(5),
+                        project(
+                                Projections.fields(
+                                        Projections.excludeId(),
+                                        Projections.include("category")
+                                )
+                        )
+                )
+        )) {
+            categoryen[g] = s.getString("category");
+            g++;
+        }
+        return categoryen;
+    }
+    public Question getQuestion(String category, int preis) {
+        String q = "", a = "", v= "";
+        for (Document s : collecion.aggregate(
+                Arrays.asList(
+                        Aggregates.match(Filters.eq("category", category)),
+                        Aggregates.match(Filters.eq("value", "$" + preis)),
+                        sample(1),
+                        project(
+                                Projections.fields(
+                                        Projections.excludeId(),
+                                        Projections.include("category"),
+                                        Projections.include("question"),
+                                        Projections.include("answer")
+                                )
+                        )
+                )
+        )) {
+            q = s.getString("question");
+            a = s.getString("awnser");
+            v = s.getString("value");
+        }
+        Question question = new Question(q,a,v);
+
+        return question;
+    }
+
     public boolean createCollection(String name){
         connect();
         try {
             datenbank.createCollection(name, null);
 
-        }catch(Exception e){
-            System.err.println("Collection konnte nicht erstellt werden.");
-            e.getMessage();
+        }catch(MongoCommandException e){
+            e.getErrorMessage();
+            e.getErrorCode();
+            e.getErrorCodeName();
         }
         return false;
     }
+}
+    /*
     public boolean createSpielerObject(){
         try {
             Spieler s = new Spieler();
@@ -132,20 +190,5 @@ public class MongoDao extends IOException {
             e.getMessage();
         }
         return false;
-    }public boolean getCategorys(){
-        try{
-            DBCollection collection = this.collecion;
-            BasicDBObject searchQuery = new BasicDBObject();
-
-            List cat = new List();
-            cat = (List) collection.distinct("Category");
-            System.out.println(cat);
-
-        }catch (Exception e){
-            e.getMessage();
-        }
-        return false;
     }
-
-
-}
+    */
